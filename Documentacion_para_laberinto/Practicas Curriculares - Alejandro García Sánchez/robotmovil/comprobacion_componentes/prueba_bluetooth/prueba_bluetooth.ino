@@ -1,8 +1,8 @@
 #include <Adafruit_NeoPixel.h>
 
 // --- PINES DE LOS MOTORES ---
-#define APWM 9
-#define BPWM 16
+#define APWM 16
+#define BPWM 9
 #define AIN_ 10
 #define BIN_ 11
 #define STBY 15
