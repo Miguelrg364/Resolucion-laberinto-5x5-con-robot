@@ -18,7 +18,6 @@ void setup() {
   pinMode(SLP_M1, OUTPUT);
 
   digitalWrite(SLP_M1, LOW); // Dormimos al motor inicialmente (disminuimos consumo)
-  digitalWrite(SLP_M2, LOW); // Dormimos al motor inicialmente (disminuimos consumo)
 }
 
 void loop() {
