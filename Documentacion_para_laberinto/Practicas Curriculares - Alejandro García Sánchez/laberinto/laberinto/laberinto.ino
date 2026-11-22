@@ -46,8 +46,8 @@ int8_t metaY = 0;
 
 // FASES DEL ROBOT:
 // 0 = Esperando coordenadas por Bluetooth
-// 1 = Explorando hacia meta desconocida (Mano derecha)
-// 2 = Regresando al inicio [0,0] (Flood Fill)
+// 1 = Explorando hacia meta desconocida (Mano derecha)   CAMBIAR MANO DERECHA POR EL ALGORITMO DE TRÉMAUX
+// 2 = Regresando al inicio [0,0] (Flood Fill)            CAMBIAR FLOOD FILL POR ALGORITMO A*
 // 3 = Speedrun hacia meta conocida (Flood Fill)
 uint8_t estadoActual = 0; 
 
@@ -71,7 +71,7 @@ void setup() {
   radar.attach(PIN_SERVO);
   radar.write(90); 
 
-  // Cerrar bordes virtuales en memoria
+  // Cerrar bordes virtuales en memoria  (LOS INDICES ESTAN PUESTOS COMO SI EL LABERINTO SE ENCONTRASE EN EL 1ºCUADRANTE: EL PRIMER INDICE EL VALOR DE X, Y EL SEGUNDO EL DE Y)
   for(int i=0; i<TAM_LABERINTO; i++) {
     mapa[i][TAM_LABERINTO-1] |= MASCARA_DIR[NORTE]; 
     mapa[i][0] |= MASCARA_DIR[SUR];   
@@ -123,8 +123,8 @@ void loop() {
 }
 
 // --- FASE 0: ESCUCHA BLUETOOTH ---
-void esperarComandoBluetooth() {
-  pararMotores(); 
+void esperarComandoBluetooth() {                //ESTO TODAVÍA NO SE SI HABRÁ QUE CAMBIARLO. QUIEN LE PASARÁ LOS DATOS AL ROBOT SERÁ EL BRAZO. 
+  pararMotores();                               //IGUAL ES NECESARIO ADAPTARLO A LAS NECESIDADES DEL BRAZO.
   
   if (Serial.available() > 0) {
     char buffer[10];
@@ -208,7 +208,8 @@ void comprobarHitosDeLlegada() {
   }
 }
 
-// --- ALGORITMO FLOOD FILL INTELIGENTE (SOLO ZONA DESCUBIERTA) ---
+// --- ALGORITMO FLOOD FILL INTELIGENTE (SOLO ZONA DESCUBIERTA) ---   ESTO HAY QUE CAMBIARLO POR UN ALGORTIMO A*
+/*
 void calcularFloodFill(int8_t destinoX, int8_t destinoY) {
   for(int i = 0; i < TAM_LABERINTO; i++) {
     for(int j = 0; j < TAM_LABERINTO; j++) distancias[i][j] = 255;
@@ -240,9 +241,11 @@ void calcularFloodFill(int8_t destinoX, int8_t destinoY) {
     }
   }
 }
+*/
 
-// --- TOMA DE DECISIONES ---
-void ejecutarDecisionExploracion() {
+// --- TOMA DE DECISIONES ---           
+/*
+void ejecutarDecisionExploracion() {                            MODIFICARLO POR TRÉMAUX, ESTO EJECUTA LA REGLA DE LA MANO DERECHA
   Direccion dirDer = (Direccion)((orientacion + 1) % 4);
   Direccion dirFrente = orientacion;
   Direccion dirIzq = (Direccion)((orientacion + 3) % 4);
@@ -253,17 +256,18 @@ void ejecutarDecisionExploracion() {
 
   // PRIORIDAD 1: Ir por caminos libres que NUNCA hemos pisado antes
   if (derLibre && !esVisitadaDir(dirDer))       girarCoche(90);
-  else if (frenteLibre && !esVisitadaDir(dirFrente)) { /* Recto */ }
+  else if (frenteLibre && !esVisitadaDir(dirFrente)) { }
   else if (izqLibre && !esVisitadaDir(dirIzq))  girarCoche(-90);
   
   // PRIORIDAD 2: Si estamos rodeados de casillas ya visitadas (Ej: al iniciar una segunda misión),
   // usamos la regla de la mano derecha pura para navegar por la zona conocida hasta encontrar algo nuevo.
   else if (derLibre)                            girarCoche(90);
-  else if (frenteLibre)                              { /* Recto */ }
+  else if (frenteLibre)                              { }
   else if (izqLibre)                            girarCoche(-90);
   else                                          girarCoche(180); // Callejón sin salida
 }
-
+*/
+/*
 void ejecutarDecisionFloodFill() {
   Direccion dirDer = (Direccion)((orientacion + 1) % 4);
   Direccion dirFrente = orientacion;
@@ -271,11 +275,12 @@ void ejecutarDecisionFloodFill() {
 
   uint8_t d_actual = distancias[posX][posY];
 
-  if (!hayPared(posX, posY, dirFrente) && distancias[obtenerVecinoX(dirFrente)][obtenerVecinoY(dirFrente)] == d_actual - 1) { /* Recto */ }
+  if (!hayPared(posX, posY, dirFrente) && distancias[obtenerVecinoX(dirFrente)][obtenerVecinoY(dirFrente)] == d_actual - 1) { }
   else if (!hayPared(posX, posY, dirDer) && distancias[obtenerVecinoX(dirDer)][obtenerVecinoY(dirDer)] == d_actual - 1)   { girarCoche(90); }
   else if (!hayPared(posX, posY, dirIzq) && distancias[obtenerVecinoX(dirIzq)][obtenerVecinoY(dirIzq)] == d_actual - 1)   { girarCoche(-90); }
   else                                                                                                                   { girarCoche(180); }
 }
+*/
 
 // --- FUNCIONES DE MEMORIA ESPACIAL ---
 int8_t obtenerVecinoX(Direccion dir) { return (dir == ESTE) ? posX + 1 : (dir == OESTE) ? posX - 1 : posX; }
