@@ -31,12 +31,13 @@
 // --- SISTEMA DE MAPEO Y MÁQUINA DE ESTADOS ---
 enum Direccion { NORTE = 0, ESTE = 1, SUR = 2, OESTE = 3 };
 const uint8_t MASCARA_DIR[4] = {1, 2, 4, 8}; 
-const uint8_t MASCARA_VISITADO = 16;    
-const uint8_t MASCARA_VISITADO_2 = 32;     
+const uint8_t MASCARA_VISITADO = 16;   
+const uint8_t MASCARA_REC[4] = {1, 4, 16, 64};
 
 uint8_t mapa[TAM_LABERINTO][TAM_LABERINTO] = {0}; 
-uint8_t distancias[TAM_LABERINTO][TAM_LABERINTO] = {0}; 
-
+uint8_t distancias[TAM_LABERINTO][TAM_LABERINTO] = {0};         
+uint8_t recorridos[TAM_LABERINTO][TAM_LABERINTO] = {0};         //Cada par de bits | [0,1] => Norte, [2,3] => Este, [4,5] => Sur, [6,7] => Oeste | representa un estado:
+                                                                // 00 => No recorrido nunca, 01 => Recorrido una sola vez, 11 => Recorrido dos veces
 int8_t posX = 0;
 int8_t posY = 0;
 Direccion orientacion = NORTE;
@@ -88,11 +89,88 @@ void setup() {
   pitar(1500, 100); delay(80); pitar(1500, 100);
 }
 
-void loop() {}
+void loop() {
+  switch (estadoActual) {
+    
+    case 0:
+      esperarComandoBluetooth();
+      break;
 
-// --- TOMA DE DECISIONES ---           
-/*
-void ejecutarDecisionExploracion() {                            MODIFICARLO POR TRÉMAUX, ESTO EJECUTA LA REGLA DE LA MANO DERECHA
+    case 1:
+    case 2:
+    case 3:
+
+      // Escanear físicamente solo si estamos explorando (Fase 1) y la casilla es nueva
+      if (estadoActual == 1 && !esVisitada(posX, posY)) {
+        escanearYMapear();
+        marcarVisitado(posX, posY);
+      }
+
+      // Decidir rumbo según la fase
+      if (estadoActual == 1) ejecutarDecisionExploracionTremaux();
+      else                    ejecutarDecisionFloodFill();
+
+      // Moverse al siguiente cruce
+      avanzarHastaCruce();
+
+      // Actualizar posición interna
+      actualizarCoordenadas();
+      if()
+      
+      // Verificar si hemos alcanzado hitos (Meta o Inicio)
+      comprobarHitosDeLlegada();
+      
+      delay(200);
+      break;
+  }
+}
+
+void comprobarHitosDeLlegada() {
+  
+  // HITO 1: Llegada a la Meta (tanto si es es explorando como de manera directa)
+  if ((estadoActual == 1 || estadoActual == 3) && posX == metaX && posY == metaY) {
+    pararMotores();
+
+    // Forzamos el escaneo y marcado de la casilla de meta antes de 
+    // cambiar de estado para no olvidarla jamás en la memoria.
+    if (!esVisitada(posX, posY)) {
+      escanearYMapear();
+      marcarVisitado(posX, posY);
+    }
+    
+    pitar(1200, 150); delay(100);
+    pitar(1500, 150); delay(100);
+    pitar(1800, 400);
+    
+    delay(1000); 
+    
+    calcularFloodFill(0, 0); 
+    estadoActual = 2;        
+  }
+  
+  // HITO 2: Regreso Exitoso a la Casilla de Inicio [0,0]
+  else if (estadoActual == 2 && posX == 0 && posY == 0) {
+    pararMotores();
+    delay(300);
+
+    // AUTO-ALINEACIÓN: Volver a mirar al Norte obligatoriamente
+    if (orientacion == ESTE)       girarCoche(-90); 
+    else if (orientacion == SUR)   girarCoche(180); 
+    else if (orientacion == OESTE)  girarCoche(90);  
+    
+    pararMotores();
+
+    pitar(1200, 150); delay(100);
+    pitar(1500, 150); delay(100);
+    pitar(1800, 400);
+    
+    estadoActual = 0; 
+  }
+}
+
+// --- TOMA DE DECISIONES ---    
+// Exploracion por mano derecha (no la usamos)       
+void ejecutarDecisionExploracion() {                            
   Direccion dirDer = (Direccion)((orientacion + 1) % 4);
   Direccion dirFrente = orientacion;
   Direccion dirIzq = (Direccion)((orientacion + 3) % 4);
@@ -113,42 +191,77 @@ void ejecutarDecisionExploracion() {                            MODIFICARLO POR 
   else if (izqLibre)                            girarCoche(-90);
   else                                          girarCoche(180); // Callejón sin salida
 }
-*/
 
 
-
-
-
-
-//Versión con Trémaux
-void ejecutarDecisionExploracion(){         
+//Exploración por el algoritmo de Trémaux
+void ejecutarDecisionExploracionTremaux(){ 
+  Direccion dirFrente = orientacion;        
   Direccion dirDer = (Direccion)((orientacion + 1) % 4);
-  Direccion dirFrente = orientacion;
+  Direccion dirDetras = (Direccion)((orientacion + 2) % 4);
   Direccion dirIzq = (Direccion)((orientacion + 3) % 4);
 
-  bool derLibre = !hayPared(posX, posY, dirDer);
   bool frenteLibre = !hayPared(posX, posY, dirFrente);
+  bool derLibre = !hayPared(posX, posY, dirDer);
+  bool detrasLibre = !hayPared(posX, posY, dirDetras);
   bool izqLibre = !hayPared(posX, posY, dirIzq);
 
   // PRIORIDAD 1: Ir por caminos libres que NUNCA hemos pisado antes
-  if (derLibre && !esVisitadaDir(dirDer))       girarCoche(90);
-  else if (frenteLibre && !esVisitadaDir(dirFrente)) { }
-  else if (izqLibre && !esVisitadaDir(dirIzq))  girarCoche(-90);
+  if (derLibre && !recorrido1Vez(dirDer)){
+      girarCoche(90);
+      marcarRecorrido1Vez(dirDer);
+  }
+  else if (frenteLibre && !recorrido1Vez(dirFrente)){ 
+      marcarRecorrido1Vez(dirFrente);
+  }
+  else if (izqLibre && !recorrido1Vez(dirIzq)){
+      girarCoche(-90);
+      marcarRecorrido1Vez(dirIzq);
+  }
   
-  // PRIORIDAD 2: Si estamos rodeados de casillas ya visitadas (Ej: al iniciar una segunda misión),
-  // usamos la regla de la mano derecha pura para navegar por la zona conocida hasta encontrar algo nuevo.
-  else if (derLibre)                            girarCoche(90);
-  else if (frenteLibre)                              { }
-  else if (izqLibre)                            girarCoche(-90);
-  else                                          girarCoche(180); // Callejón sin salida
+  // PRIORIDAD 2: Ir por caminos que hemos pisado UNA SOLA VEZ
+  else if (derLibre && !recorrido2Veces(dirDer)){
+      girarCoche(90);
+      marcarRecorrido2Veces(dirDer);
+  }
+  else if (frenteLibre && !recorrido2Veces(dirFrente)){ 
+      marcarRecorrido2Veces(dirFrente);
+  }
+  else if (izqLibre && !recorrido2Veces(dirIzq)){
+      girarCoche(-90);
+      marcarRecorrido2Veces(dirIzq);
+  }
+  
+  //No hay caminos libres o que no hayamos pasado por ellos 2 veces, así que nos damos la vuelta
+  else{
+    girarCoche(180);
+    if(!recorrido1Vez(dirDetras)) marcarRecorrido1Vez(dirDetras);
+    else if (!recorrido2Veces(dirDetras)) marcarRecorrido2Veces(dirDetras);
+  }
 }
 
+//Direccion recorrida AL MENOS UNA vez
+bool recorrido1Vez(Direccion dir){
+  return((recorridos[posX][posY] & MASCARA_REC[dir]) != 0);
+}
 
+//Direccion recorrida 2 veces
+bool recorrido2Veces(Direccion dir){
+  return((recorridos[posX][posY] & MASCARA_REC[dir]*2) != 0);
+}
 
+void marcarRecorrido1Vez(Direccion dir){
+  int8_t vx = obtenerVecinoX(dir);
+  int8_t vy = obtenerVecinoY(dir);
+  recorridos[posX][posY] |= MASCARA_REC[dir];
+  recorridos[vx][vy] |= MASCARA_REC[(dir+2)%4];
+}
 
-
-
-
+void marcarRecorrido2Veces(Direccion dir){
+  int8_t vx = obtenerVecinoX(dir);
+  int8_t vy = obtenerVecinoY(dir);
+  recorridos[posX][posY] |= MASCARA_REC[dir]*2;
+  recorridos[vx][vy] |= MASCARA_REC[(dir+2)%4]*2;
+}
 
 
 // --- FUNCIONES DE MEMORIA ESPACIAL ---
@@ -188,18 +301,11 @@ bool hayPared(int8_t x, int8_t y, Direccion dir) {
   if (x < 0 || x >= TAM_LABERINTO || y < 0 || y >= TAM_LABERINTO) return true;
   return (mapa[x][y] & MASCARA_DIR[dir]) != 0; 
 }
+
 void marcarVisitado(int8_t x, int8_t y) { mapa[x][y] |= MASCARA_VISITADO; }
-void marcarVisitado2(int8_t x, int8_t y) { mapa[x][y] |= MASCARA_VISITADO_2; }
 bool esVisitada(int8_t x, int8_t y) { return (mapa[x][y] & MASCARA_VISITADO) != 0; }
-bool esVisitada2(int8_t x, int8_t y) { return (mapa[x][y] & MASCARA_VISITADO_2) != 0; }
 
 bool esVisitadaDir(Direccion dir) {
-  int8_t ax = obtenerVecinoX(dir); int8_t ay = obtenerVecinoY(dir);
-  if (ax < 0 || ax >= TAM_LABERINTO || ay < 0 || ay >= TAM_LABERINTO) return true;
-  return esVisitada(ax, ay);
-}
-
-bool esVisitadaDir2(Direccion dir) {
   int8_t ax = obtenerVecinoX(dir); int8_t ay = obtenerVecinoY(dir);
   if (ax < 0 || ax >= TAM_LABERINTO || ay < 0 || ay >= TAM_LABERINTO) return true;
   return esVisitada(ax, ay);

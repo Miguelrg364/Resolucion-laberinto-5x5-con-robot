@@ -1,0 +1,12 @@
+Para implementar el algoritmo de tremaux, necesitamos una matriz adicional de 25 bytes
+llamada "recorrido", en la cual cada posición ocupa 1 byte y sus bits representan:
+ -> 1º y 2º bit: Estado norte
+ -> 3º y 4º bit: Estado este
+ -> 5º y 6º bit: Estado sur
+ -> 7º y 8º bit: Estado oeste
+Siendo cada estado:
+ -> 00: No visitado
+ -> 01: Visitado al menos 1 vez
+ -> 11: Visitado 2 o más veces
+Así podremos cuantificar cuantas veces se ha ido por un camino en un cruce, y poder usar
+esta información en la toma de decisión del algoritmo de Trémaux.
