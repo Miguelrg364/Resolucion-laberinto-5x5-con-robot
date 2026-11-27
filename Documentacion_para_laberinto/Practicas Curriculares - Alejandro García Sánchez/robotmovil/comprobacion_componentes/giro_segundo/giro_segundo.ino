@@ -1,4 +1,4 @@
-// Programa para que el motor cambie su sentido de giro cada segundo
+// Programa para que los motores cambien su sentido de giro cada 5 segundos
 
 // Pines de PWM
 #define M1 16
@@ -13,6 +13,7 @@
 
 void setup() {
   pinMode(M1, OUTPUT);
+  pinMode(M2, OUTPUT);
   pinMode(IN_M1, OUTPUT);
   pinMode(IN_M2, OUTPUT);
   pinMode(SLP_M1, OUTPUT);
@@ -21,22 +22,20 @@ void setup() {
 }
 
 void loop() {
-  // Movemos el motor en un sentido de giro
-  digitalWrite(SLP_M1, HIGH); // Despertamos el motor
-  digitalWrite(SLP_M2, HIGH);
+  // Movemos los motores en un sentido de giro
+  digitalWrite(SLP_M1, HIGH); // Despertamos el driver
   analogWrite(M1, 150);       // Establecemos la velocidad de giro (valor entre 0-255)
   analogWrite(M2, 150);
 
-  // Establecemos sentido de giro (un pin debe estar en HIGH y el otro en LOW)
+  // Sentido de giro: HIGH en el pin de direccion de cada motor
   digitalWrite(IN_M1, HIGH);
   digitalWrite(IN_M2, HIGH);
 
-  delay(5000); // Mantenemos el estado del motor 1 segundo
+  delay(5000); // Mantenemos el estado de los motores 5 segundos
 
-    // Establecemos sentido de giro (un pin debe estar en HIGH y el otro en LOW)
+  // Sentido de giro contrario: LOW en el pin de direccion de cada motor
   digitalWrite(IN_M1, LOW);
   digitalWrite(IN_M2, LOW);
 
-  delay(5000); // Mantenemos el estado del motor 1 segundo
-
+  delay(5000); // Mantenemos el estado de los motores 5 segundos
 }
